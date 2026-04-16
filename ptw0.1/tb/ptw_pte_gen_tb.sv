@@ -65,7 +65,7 @@ module ptw_pte_gen_tb;
         end
     endtask
 
-    // ---------------------------------------------------------
+   // ---------------------------------------------------------
     // TC15: 2MB Overflow / Truncation Check
     // ---------------------------------------------------------
     task TC15_overflow_check();
@@ -76,25 +76,36 @@ module ptw_pte_gen_tb;
             page_size_i = 2'd1;
             level_i     = 2'b10;
             vpn_i       = 32'h0;
-            base_ppn_i  = 32'h07FF_FFFF; // Top 5 bits are 0
+            base_ppn_i  = 32'h07FF_FFFF; // SAFE: Top 5 bits are 00000
             
-            @(posedge clk_i);
+            @(posedge clk_i); // Wait for hardware to process
             if (address_fault_o === 1'b1) begin
                 $display("[FAIL] TC15.A: Legal address falsely triggered fault!");
                 error_count++;
             end else begin
-                $display("[PASS] TC15.A: Legal 2MB address accepted.");
+                $display("[PASS] TC15.A: Safe 2MB address accepted.");
             end
 
-            // Sub-test B: Illegal 2MB Address (Top bit is 1)
-            base_ppn_i  = 32'h8000_0000; // Top 5 bits are 10000
+            // Sub-test B1: Moderate overflow
+            base_ppn_i  = 32'h8000_0000; // ILLEGAL: Top 5 bits are 10000
             
-            @(posedge clk_i);
+            @(posedge clk_i); // Wait for hardware to process
             if (address_fault_o === 1'b0) begin
-                $display("[FAIL] TC15.B: Hardware failed to catch 2MB overflow!");
+                $display("[FAIL] TC15.B1: Hardware failed to catch Moderate overflow!");
                 error_count++;
             end else begin
-                $display("[PASS] TC15.B: Overflow successfully caught! Fault triggered.");
+                $display("[PASS] TC15.B1: Moderate overflow successfully caught!");
+            end
+
+            // Sub-test B2: Maximum overflow
+            base_ppn_i  = 32'hFFFF_FFFF; // ILLEGAL: Top 5 bits are 11111
+            
+            @(posedge clk_i); // Wait for hardware to process
+            if (address_fault_o === 1'b0) begin
+                $display("[FAIL] TC15.B2: Hardware failed to catch Maximum overflow!");
+                error_count++;
+            end else begin
+                $display("[PASS] TC15.B2: Maximum overflow successfully caught!");
             end
         end
     endtask
