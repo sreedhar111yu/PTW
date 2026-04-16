@@ -12,7 +12,8 @@ module ptw_pte_gen #(
     input  logic [1:0]           page_size_i,
 
     output logic [PA_WIDTH-1:0]  pte_pa_o,
-    output logic [1:0]           next_level_o
+    output logic [1:0]           next_level_o,
+    output logic                 address_fault_o  // NEW: Fault flag
 );
 
     logic [8:0]  vpn_idx;
@@ -71,5 +72,20 @@ module ptw_pte_gen #(
     // ---------------------------
     // Shift index by 3 (multiply by 8 bytes) and add to base
     assign pte_pa_o = base_addr + (48'(vpn_idx) << 3);
+
+    // ---------------------------
+    // 5. Overflow Fault Checker
+    // ---------------------------
+    always_comb begin
+        address_fault_o = 1'b0; // Default to safe
+
+        // If 2MB mode, shifting by 21 means top 5 bits MUST be zero.
+        // 32 (PPN width) - (48 (PA Width) - 21 (Shift)) = 5 bits overflow
+        if (page_size_i == 2'd1) begin
+            if (base_ppn_i[31:27] != 5'b0) begin
+                address_fault_o = 1'b1; // Trigger the fault!
+            end
+        end
+    end
 
 endmodule
